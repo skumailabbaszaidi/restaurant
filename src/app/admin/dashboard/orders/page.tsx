@@ -7,9 +7,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Check, Clock, ChefHat } from "lucide-react";
 
+import { useEffect } from "react";
+
 export default function OrdersPage() {
   const orders = useAdminStore((state) => state.orders);
   const updateOrderStatus = useAdminStore((state) => state.updateOrderStatus);
+  const fetchOrders = useAdminStore((state) => state.fetchOrders);
+  const currentOrganization = useAdminStore((state) => state.currentOrganization);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
 
   // Simple sorting: Pending first, then confirmed, then completed
   const sortedOrders = [...orders].sort((a, b) => {

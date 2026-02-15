@@ -44,6 +44,7 @@ export type CartItem = {
 };
 
 export type Order = {
+  id?: string;
   restaurantSlug: string;
   tableNumber: string;
   items: CartItem[];

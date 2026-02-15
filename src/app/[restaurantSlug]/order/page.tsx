@@ -3,12 +3,15 @@
 import { useEffect, use } from "react";
 import { notFound } from "next/navigation";
 import { useCartStore } from "@/store/cartStore";
-import { MOCK_RESTAURANT, MOCK_CATEGORIES, MOCK_MENU_ITEMS } from "@/lib/mockData";
 import { TableNumberInput } from "@/components/TableNumberInput";
 import { MenuCategory } from "@/components/MenuCategory";
 import { Cart } from "@/components/Cart";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { LogOut, Loader2 } from "lucide-react";
+import { apiService } from "@/lib/api";
+import { MenuItem, Category } from "@/lib/types"; // Ensure Category type exists or define it locally if needed
+import { useState } from "react";
+// Removed MOCK imports
 
 interface PageProps {
   params: Promise<{ restaurantSlug: string }>;
@@ -23,21 +26,71 @@ export default function OrderPage({ params }: PageProps) {
   const currentSlug = useCartStore((state) => state.restaurantSlug);
   const clearCart = useCartStore((state) => state.clearCart);
 
-  // In a real app, we would fetch restaurant data based on slug here.
-  // For now, we check if the slug matches our mock data.
-  const restaurant = MOCK_RESTAURANT.slug === restaurantSlug ? MOCK_RESTAURANT : null;
+  const [restaurant, setRestaurant] = useState<any>(null); // Replace 'any' with proper type
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [categories, setCategories] = useState<any[]>([]); // Replace 'any' with proper type
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (restaurant) {
-      // If switching restaurants, clear the cart
-      if (currentSlug && currentSlug !== restaurant.slug) {
-        clearCart();
-      }
-      setRestaurantSlug(restaurant.slug);
-    }
-  }, [restaurant, currentSlug, setRestaurantSlug, clearCart]);
+    async function fetchData() {
+        try {
+            setLoading(true);
+            const [restaurantData, menuData] = await Promise.all([
+                apiService.getRestaurant(restaurantSlug),
+                apiService.getMenu(restaurantSlug)
+            ]);
+            
+            setRestaurant(restaurantData);
+            // Assuming menuData returns { categories, items } based on likely backend structure
+            // If backend returns just items, we process categories from items
+            
+            if (menuData.items) {
+                setMenuItems(menuData.items);
+            } else if (Array.isArray(menuData)) {
+                // If backend returns just an array of items
+                setMenuItems(menuData);
+            }
 
-  if (!restaurant) {
+            if (menuData.categories) {
+                setCategories(menuData.categories);
+            } else {
+                // Fetch categories separately if not in menuData
+                try {
+                    const catData = await apiService.getPublicCategories(restaurantSlug);
+                    setCategories(catData);
+                } catch (catErr) {
+                    console.error("Failed to fetch public categories", catErr);
+                    setCategories([]); 
+                }
+            }
+            
+            // If switching restaurants, clear the cart
+            if (currentSlug && currentSlug !== restaurantData.slug) {
+                clearCart();
+            }
+            setRestaurantSlug(restaurantData.slug);
+
+        } catch (e) {
+            console.error("Failed to fetch data", e);
+            setError(true);
+        } finally {
+            setLoading(false);
+        }
+    }
+    
+    fetchData();
+  }, [restaurantSlug, currentSlug, setRestaurantSlug, clearCart]);
+
+  if (loading) {
+      return (
+          <div className="h-screen w-full flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+          </div>
+      );
+  }
+
+  if (error || !restaurant) {
     return notFound();
   }
 
@@ -85,7 +138,7 @@ export default function OrderPage({ params }: PageProps) {
 
       {/* Menu Categories & Items */}
       <main>
-        <MenuCategory categories={MOCK_CATEGORIES} items={MOCK_MENU_ITEMS} />
+        <MenuCategory categories={categories} items={menuItems} />
       </main>
 
       {/* Cart Floating Action | Modal */}

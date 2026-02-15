@@ -12,20 +12,25 @@ import { Lock } from "lucide-react";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState(""); // Mock password
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const login = useAdminStore((state) => state.login);
   const router = useRouter();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simple mock auth
-    if (login(email)) {
+    setIsLoading(true);
+    
+    try {
+      await login(email, password);
       toast.success("Welcome back!");
       router.push("/admin/dashboard/orders");
-    } else {
-      toast.error("Invalid credentials", {
-        description: "Try admin@demo.com or member@demo.com",
+    } catch (error: any) {
+      toast.error("Login Failed", {
+        description: error.message || "Invalid credentials",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -61,19 +66,18 @@ export default function AdminLoginPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="Any password works"
+                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
-            <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-700">
-              Sign In
+            <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-700" disabled={isLoading}>
+              {isLoading ? "Signing in..." : "Sign In"}
             </Button>
             <div className="text-xs text-center text-gray-400 mt-4">
-               <p>Demo Credentials:</p>
-               <p>Admin: admin@demo.com</p>
-               <p>Member: member@demo.com</p>
+               <p>Development Mode:</p>
+               <p>Ensure Firebase keys are in .env.local</p>
             </div>
           </form>
         </CardContent>

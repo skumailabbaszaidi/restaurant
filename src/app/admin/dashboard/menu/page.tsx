@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdminStore } from "@/store/adminStore";
 import { formatCurrency, cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -12,16 +12,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { Edit, Image as ImageIcon, Plus } from "lucide-react";
-import { MOCK_CATEGORIES } from "@/lib/mockData";
 import { toast } from "sonner";
+import { Trash2, Plus, Edit, Image as ImageIcon } from "lucide-react";
 
 export default function MenuPage() {
   const menuItems = useAdminStore((state) => state.menuItems);
   const toggleMenuItemAvailability = useAdminStore((state) => state.toggleMenuItemAvailability);
   const addMenuItem = useAdminStore((state) => state.addMenuItem);
+  const fetchMenu = useAdminStore((state) => state.fetchMenu);
+  const categories = useAdminStore((state) => state.categories);
+  const fetchCategories = useAdminStore((state) => state.fetchCategories);
+  const addCategory = useAdminStore((state) => state.addCategory);
+  const deleteCategory = useAdminStore((state) => state.deleteCategory);
 
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  
+  useEffect(() => {
+    fetchMenu();
+    fetchCategories();
+  }, [fetchMenu, fetchCategories]);
   const [newItem, setNewItem] = useState({
     name: "",
     description: "",
@@ -54,71 +65,125 @@ export default function MenuPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Menu Management</h1>
         
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-            <DialogTrigger asChild>
-                <Button className="bg-orange-600 hover:bg-orange-700">
-                    <Plus className="mr-2 h-4 w-4" /> Add New Item
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>Add Menu Item</DialogTitle>
-                    <DialogDescription>
-                        Create a new delicious item for your menu.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor="name">Item Name</Label>
-                        <Input 
-                            id="name" 
-                            value={newItem.name} 
-                            onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} 
-                            placeholder="e.g., Spicy Beef Burger"
-                        />
+        <div className="flex gap-2">
+            <Dialog open={isCategoryOpen} onOpenChange={setIsCategoryOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline">
+                        Manage Categories
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Manage Categories</DialogTitle>
+                        <DialogDescription>
+                            Add or remove categories for your menu.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="flex gap-2">
+                            <Input 
+                                placeholder="Category Name" 
+                                value={newCatName} 
+                                onChange={(e) => setNewCatName(e.target.value)} 
+                            />
+                            <Button onClick={() => {
+                                if (newCatName) {
+                                    addCategory(newCatName);
+                                    setNewCatName("");
+                                    toast.success("Category added");
+                                }
+                            }}>Add</Button>
+                        </div>
+                        <div className="max-h-[300px] overflow-y-auto space-y-2">
+                            {categories.map((cat) => (
+                                <div key={cat.id} className="flex items-center justify-between p-2 border rounded">
+                                    <span>{cat.name}</span>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-8 w-8 text-red-500"
+                                        onClick={() => {
+                                            if (confirm(`Remove category "${cat.name}"?`)) {
+                                                deleteCategory(cat.id);
+                                                toast.success("Category removed");
+                                            }
+                                        }}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="category">Category</Label>
-                        <Select 
-                            value={newItem.categoryId} 
-                            onValueChange={(val) => setNewItem({ ...newItem, categoryId: val })}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {MOCK_CATEGORIES.map((cat) => (
-                                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                <DialogTrigger asChild>
+                    <Button className="bg-orange-600 hover:bg-orange-700">
+                        <Plus className="mr-2 h-4 w-4" /> Add New Item
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Add Menu Item</DialogTitle>
+                        <DialogDescription>
+                            Create a new delicious item for your menu.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="name">Item Name</Label>
+                            <Input 
+                                id="name" 
+                                value={newItem.name} 
+                                onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} 
+                                placeholder="e.g., Spicy Beef Burger"
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="category">Category</Label>
+                            <Select 
+                                value={newItem.categoryId} 
+                                onValueChange={(val) => setNewItem({ ...newItem, categoryId: val })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select category" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {categories.map((cat) => (
+                                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="price">Price (PKR)</Label>
+                            <Input 
+                                id="price" 
+                                type="number" 
+                                value={newItem.price} 
+                                onChange={(e) => setNewItem({ ...newItem, price: e.target.value })} 
+                                placeholder="0"
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="description">Description</Label>
+                            <Textarea 
+                                id="description" 
+                                value={newItem.description} 
+                                onChange={(e) => setNewItem({ ...newItem, description: e.target.value })} 
+                                placeholder="Describe the ingredients and taste..."
+                            />
+                        </div>
                     </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="price">Price (PKR)</Label>
-                        <Input 
-                            id="price" 
-                            type="number" 
-                            value={newItem.price} 
-                            onChange={(e) => setNewItem({ ...newItem, price: e.target.value })} 
-                            placeholder="0"
-                        />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="description">Description</Label>
-                        <Textarea 
-                            id="description" 
-                            value={newItem.description} 
-                            onChange={(e) => setNewItem({ ...newItem, description: e.target.value })} 
-                            placeholder="Describe the ingredients and taste..."
-                        />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-                    <Button onClick={handleAddItem} className="bg-orange-600 hover:bg-orange-700">Save Item</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+                        <Button onClick={handleAddItem} className="bg-orange-600 hover:bg-orange-700">Save Item</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg border shadow-sm">

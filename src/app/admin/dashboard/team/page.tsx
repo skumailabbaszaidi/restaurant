@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdminStore } from "@/store/adminStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,12 @@ export default function TeamPage() {
   const teamMembers = useAdminStore((state) => state.teamMembers);
   const inviteMember = useAdminStore((state) => state.inviteMember);
   const removeMember = useAdminStore((state) => state.removeMember);
+  const fetchTeam = useAdminStore((state) => state.fetchTeam);
   const currentUser = useAdminStore((state) => state.currentUser);
+  
+  useEffect(() => {
+      fetchTeam();
+  }, [fetchTeam]);
 
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [newName, setNewName] = useState("");
