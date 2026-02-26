@@ -40,24 +40,37 @@ export default function MenuPage() {
     categoryId: "",
     imageUrl: "/images/food-placeholder.png",
   });
+  const [errors, setErrors] = useState({
+    name: "",
+    price: "",
+    categoryId: "",
+  });
 
   const handleAddItem = () => {
-    if (!newItem.name || !newItem.price || !newItem.categoryId) {
-        toast.error("Please fill in all required fields");
-        return;
+    const newErrors = {
+      name: newItem.name ? "" : "Item name is required",
+      price: newItem.price ? "" : "Price is required",
+      categoryId: newItem.categoryId ? "" : "Category is required",
+    };
+
+    if (newErrors.name || newErrors.price || newErrors.categoryId) {
+      setErrors(newErrors);
+      toast.error("Please fix the highlighted fields");
+      return;
     }
 
     addMenuItem({
-        name: newItem.name,
-        description: newItem.description,
-        price: Number(newItem.price),
-        categoryId: newItem.categoryId,
-        imageUrl: newItem.imageUrl,
+      name: newItem.name,
+      description: newItem.description,
+      price: Number(newItem.price),
+      categoryId: newItem.categoryId,
+      imageUrl: newItem.imageUrl,
     });
 
     toast.success("Item added successfully");
     setIsAddOpen(false);
     setNewItem({ name: "", description: "", price: "", categoryId: "", imageUrl: "/images/food-placeholder.png" });
+    setErrors({ name: "", price: "", categoryId: "" });
   };
 
   return (
@@ -137,17 +150,31 @@ export default function MenuPage() {
                             <Input 
                                 id="name" 
                                 value={newItem.name} 
-                                onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} 
+                                onChange={(e) => {
+                                    setNewItem({ ...newItem, name: e.target.value });
+                                    if (errors.name) {
+                                        setErrors((prev) => ({ ...prev, name: "" }));
+                                    }
+                                }} 
                                 placeholder="e.g., Spicy Beef Burger"
+                                className={cn(errors.name && "border-red-500 focus-visible:ring-red-500")}
                             />
+                            {errors.name && (
+                                <p className="text-xs text-red-500 mt-1">{errors.name}</p>
+                            )}
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="category">Category</Label>
                             <Select 
                                 value={newItem.categoryId} 
-                                onValueChange={(val) => setNewItem({ ...newItem, categoryId: val })}
+                                onValueChange={(val) => {
+                                    setNewItem({ ...newItem, categoryId: val });
+                                    if (errors.categoryId) {
+                                        setErrors((prev) => ({ ...prev, categoryId: "" }));
+                                    }
+                                }}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger className={cn(errors.categoryId && "border-red-500 focus-visible:ring-red-500")}>
                                     <SelectValue placeholder="Select category" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -156,16 +183,36 @@ export default function MenuPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
+                            {errors.categoryId && (
+                                <p className="text-xs text-red-500 mt-1">{errors.categoryId}</p>
+                            )}
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="price">Price (PKR)</Label>
-                            <Input 
+                                <Input 
                                 id="price" 
-                                type="number" 
+                                type="text" 
+                                inputMode="numeric"
+                                step={100}
+                                min={0}
+                                pattern="[0-9]*"
                                 value={newItem.price} 
-                                onChange={(e) => setNewItem({ ...newItem, price: e.target.value })} 
+                                onChange={(e) => {
+                                    const rawValue = e.target.value;
+                                    const numericValue = rawValue.replace(/\D/g, "");
+
+                                    setNewItem({ ...newItem, price: numericValue });
+
+                                    if (errors.price && numericValue) {
+                                        setErrors((prev) => ({ ...prev, price: "" }));
+                                    }
+                                }} 
                                 placeholder="0"
+                                className={cn(errors.price && "border-red-500 focus-visible:ring-red-500")}
                             />
+                            {errors.price && (
+                                <p className="text-xs text-red-500 mt-1">{errors.price}</p>
+                            )}
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="description">Description</Label>
