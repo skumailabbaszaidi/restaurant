@@ -2,8 +2,9 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { User, Organization, TeamMember, Role } from '@/lib/adminTypes';
 import { MenuItem, Order } from '@/lib/types';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { collection, query, onSnapshot, orderBy, doc, getDoc } from 'firebase/firestore';
 import { apiService } from '@/lib/api';
 
 // No mock data needed here anymore, as we fetch from backend.
@@ -21,7 +22,7 @@ interface AdminStore {
   // Actions
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  checkAuth: () => void; // Listener
+  checkAuth: () => () => void; // Returns unsubscribe
   inviteMember: (name: string, email: string, role: Role) => void;
   removeMember: (id: string) => void;
   fetchCategories: () => Promise<void>;
@@ -29,10 +30,11 @@ interface AdminStore {
   deleteCategory: (id: string) => Promise<void>;
   toggleMenuItemAvailability: (id: string) => void;
   addMenuItem: (item: Omit<MenuItem, 'id' | 'available'>) => void;
-  updateOrderStatus: (index: number, status: Order['status']) => void;
+  updateOrderStatus: (id: string, status: Order['status']) => void;
   fetchOrders: () => Promise<void>;
   fetchMenu: () => Promise<void>;
   fetchTeam: () => Promise<void>;
+  subscribeToOrders: () => () => void; // Returns unsubscribe
 }
 
 export const useAdminStore = create<AdminStore>()(
@@ -52,66 +54,35 @@ export const useAdminStore = create<AdminStore>()(
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const firebaseUser = userCredential.user;
             
-            // Fetch Organization details using API (which uses the token)
-            // Ideally we'd have a specific endpoint for "me" or similar, 
-            // but for now we might need to rely on the backend to facilitate this 
-            // OR use the existing generic structure if we had one.
-            // Since the prompt doesn't specify a "get my profile" endpoint, 
-            // we will assume the User's Org ID is fetched via a separate call or part of the login flow if implemented.
-            // HOWEVER, based on the provided API list:
-            // GET /admin/team -> Get all team members. 
-            // We might not be able to get *current* user details easily without an endpoint.
-            // For this specific iteration, I'll trust the user login and mock the Org fetch OR 
-            // use a known slug if available to test. 
-            // WAITING: The protected endpoints depend on the user effectively.
+            // 1. Fetch User Profile from Firestore
+            const userRef = doc(db, 'users', firebaseUser.uid);
+            const userSnapshot = await getDoc(userRef);
             
-            // Let's implement what we can: 
-            // The prompt says: "Role: admin or member", "OrganizationId: Links user..."
-            // We likely need to fetch the User profile from Firestore (backend) 
-            // BUT there is no specific "get user" endpoint in the provided list.
-            // The list has `/admin/team`.
+            if (!userSnapshot.exists()) {
+                throw new Error("User profile not found in database.");
+            }
             
-            // Workaround: We will fetch the team list and find the current user 
-            // (inefficient but works with provided APIs).
-            // Actually, we can just set the user for now and load data.
-            
-            /* 
-               REAL IMPLEMENTATION NOTE:
-               Usually: GET /auth/me -> { user, organization }
-               Here: We only have `/admin/team`.
-            */
-
-             const user: User = {
+            const userData = userSnapshot.data();
+            const user: User = {
                 id: firebaseUser.uid,
-                name: firebaseUser.displayName || email.split('@')[0],
+                name: userData.name || firebaseUser.displayName || email.split('@')[0],
                 email: firebaseUser.email!,
-                role: 'admin', // Defaulting for dev, ideally fetched
-                organizationId: 'org_1' // Placeholder until we can fetch it
+                role: userData.role || 'member',
+                organizationId: userData.organizationId
             };
-            
-            // Note: The prompt didn't strictly give a "get my org" endpoint.
-            // We might need to ask or infer.
-            // For now, let's keep the user object construction BUT try to fetch data.
             
             set({ currentUser: user });
             
-            // NEW: Fetch REAL Organization details after login
-            try {
-                const orgData = await apiService.getOrganization();
-                set({ currentOrganization: orgData });
-            } catch (e) {
-                console.error("Failed to fetch organization after login", e);
-                // Fallback to MOCK_ORG only if desperate or handle error
-            }
+            // 2. Fetch Organization details
+            const orgData = await apiService.getOrganization();
+            set({ currentOrganization: orgData });
 
+            console.log("Login success. Org context:", orgData.id);
             set({ isLoading: false });
-            
-            // Verify token
-            const token = await firebaseUser.getIdToken();
-            console.log("Logged in with token:", token);
 
         } catch (error) {
             set({ isLoading: false });
+            console.error("Login Error:", error);
             throw error;
         }
       },
@@ -122,32 +93,92 @@ export const useAdminStore = create<AdminStore>()(
       },
 
       checkAuth: () => {
-         onAuthStateChanged(auth, async (firebaseUser) => {
+         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
-                // Ideally fetch user profile from backend
-                // For now, reconstruct user object as in login
-                const role = firebaseUser.email?.includes('admin') ? 'admin' : 'member';
-                const user: User = {
-                    id: firebaseUser.uid,
-                    name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-                    email: firebaseUser.email!,
-                    role: role as Role,
-                    organizationId: '' // Will be populated by fetching Organization details below
-                };
-                
-                set({ currentUser: user });
-                
-                // NEW: Fetch REAL Organization details on auth change
-                try {
-                    const orgData = await apiService.getOrganization();
-                    set({ currentOrganization: orgData });
-                } catch (e) {
-                    console.error("Failed to fetch organization on auth change", e);
-                }
+                    const existingUser = get().currentUser;
+                    const existingOrg = get().currentOrganization;
+
+                    // 1. Set basic info first IF we don't have a user yet
+                    if (!existingUser) {
+                        set({ currentUser: {
+                            id: firebaseUser.uid,
+                            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                            email: firebaseUser.email!,
+                            role: 'member' as Role,
+                            organizationId: '' 
+                        }});
+                    }
+
+                    try {
+                        // 2. Try to fetch full profile from Firestore
+                        const userRef = doc(db, 'users', firebaseUser.uid);
+                        const userSnapshot = await getDoc(userRef);
+                        
+                        if (userSnapshot.exists()) {
+                            const userData = userSnapshot.data();
+                            set((state) => ({ 
+                                currentUser: {
+                                    id: firebaseUser.uid,
+                                    name: userData.name || state.currentUser?.name || 'User',
+                                    email: firebaseUser.email!,
+                                    role: userData.role as Role,
+                                    organizationId: userData.organizationId 
+                                }
+                            }));
+                        }
+                    } catch (firestoreErr) {
+                        console.warn("Firestore profile read failed:", firestoreErr);
+                    }
+
+                    try {
+                        // 3. Fetch Org context from API
+                        const orgData = await apiService.getOrganization();
+                        // Only set if different to prevent re-renders
+                        if (JSON.stringify(orgData) !== JSON.stringify(existingOrg)) {
+                            set({ currentOrganization: orgData });
+                        }
+                    } catch (apiErr) {
+                        console.error("API Org fetch error:", apiErr);
+                    }
             } else {
-                set({ currentUser: null, currentOrganization: null, teamMembers: [], categories: [], orders: [], menuItems: [] });
+                // Only clear if we actually had a user (meaning a real logout happened)
+                if (get().currentUser) {
+                    set({ currentUser: null, currentOrganization: null, teamMembers: [], categories: [], orders: [], menuItems: [] });
+                }
             }
          });
+         return unsubscribe;
+      },
+
+      subscribeToOrders: () => {
+          const organizationId = get().currentOrganization?.id;
+          
+          if (!organizationId) {
+              console.warn("Cannot subscribe to orders: Missing organization context");
+              return () => {};
+          }
+
+          console.log(`Subscribing to realtime orders for org: ${organizationId}`);
+          const ordersRef = collection(db, 'organizations', organizationId, 'orders');
+          const q = query(ordersRef, orderBy('createdAt', 'desc'));
+          
+          const unsubscribe = onSnapshot(q, (snapshot) => {
+              console.log(`Realtime update: Received ${snapshot.docs.length} orders`);
+              const orders = snapshot.docs.map(doc => {
+                  const data = doc.data();
+                  return {
+                      id: doc.id,
+                      ...data,
+                      createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt || new Date())
+                  } as Order;
+              });
+              
+              set({ orders });
+          }, (error) => {
+              console.error("CRITICAL: Firestore subscription error:", error);
+          });
+          
+          return unsubscribe;
       },
 
       // ... keep existing actions for now
@@ -240,18 +271,35 @@ export const useAdminStore = create<AdminStore>()(
          }
       },
 
-      updateOrderStatus: (index, status) => 
-        set((state) => {
-           const newOrders = [...state.orders];
-           newOrders[index] = { ...newOrders[index], status };
-           return { orders: newOrders };
-        }),
+      updateOrderStatus: async (id, status) => {
+        try {
+            // Optimistic update
+            set((state) => ({
+              orders: state.orders.map((order) =>
+                order.id === id ? { ...order, status } : order
+              ),
+            }));
+
+            // Persistent update to backend
+            await apiService.updateOrder(id, { status });
+        } catch (e) {
+            console.error("Failed to update order status", e);
+        }
+      },
 
       fetchOrders: async () => {
           set({ isLoading: true });
           try {
-              const orders = await apiService.getOrders();
-              // Ideally validation or transformation here
+              const rawOrders = await apiService.getOrders();
+              
+              // Ensure consistent date objects across the app
+              const orders = rawOrders.map((o: any) => ({
+                  ...o,
+                  createdAt: o.createdAt?.toDate ? o.createdAt.toDate() : 
+                             (typeof o.createdAt === 'string' ? new Date(o.createdAt) : 
+                             (o._seconds ? new Date(o._seconds * 1000) : (o.createdAt || new Date())))
+              })) as Order[];
+
               set({ orders, isLoading: false });
           } catch (e) {
               console.error("Failed to fetch orders", e);

@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Trash2, Plus, Minus, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
+import { apiService } from "@/lib/api";
 
 export function Cart() {
   const items = useCartStore((state) => state.items);
@@ -20,26 +21,44 @@ export function Cart() {
   const tableNumber = useCartStore((state) => state.tableNumber);
   const restaurantSlug = useCartStore((state) => state.restaurantSlug);
 
+  const addOrderId = useCartStore((state) => state.addOrderId);
   const [isOpen, setIsOpen] = useState(false);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (items.length === 0) return;
 
-    const orderData = {
-      restaurantSlug,
-      tableNumber,
-      items,
-      total: totalPrice,
-      createdAt: new Date(),
-    };
+    setIsPlacingOrder(true);
+    try {
+        const orderData = {
+          restaurantSlug,
+          tableNumber,
+          items,
+          total: totalPrice,
+          status: 'pending' as const,
+          createdAt: new Date(),
+        };
 
-    console.log("Order Placed:", orderData);
-    toast.success("Order placed successfully!", {
-      description: "Kitchen has started preparing your food.",
-    });
-    
-    clearCart();
-    setIsOpen(false);
+        const result = await apiService.createOrder(orderData);
+        
+        // Save order ID for tracking
+        if (result.id) {
+            addOrderId(result.id);
+        }
+
+        toast.success("Order placed successfully!", {
+          description: "Kitchen has started preparing your food.",
+        });
+        
+        clearCart();
+        setIsOpen(false);
+    } catch (error: any) {
+        toast.error("Failed to place order", {
+            description: error.message || "Please try again later."
+        });
+    } finally {
+        setIsPlacingOrder(false);
+    }
   };
 
   if (totalItems === 0) return null;
@@ -134,9 +153,9 @@ export function Cart() {
                 <Button 
                     className="w-full bg-orange-600 hover:bg-orange-700 py-6 text-lg"
                     onClick={handlePlaceOrder}
-                    disabled={items.length === 0}
+                    disabled={items.length === 0 || isPlacingOrder}
                 >
-                    Place Order
+                    {isPlacingOrder ? "Placing Order..." : "Place Order"}
                 </Button>
              </div>
           </SheetFooter>

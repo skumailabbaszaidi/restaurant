@@ -2,6 +2,7 @@
 
 import { useEffect, use } from "react";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { useCartStore } from "@/store/cartStore";
 import { TableNumberInput } from "@/components/TableNumberInput";
 import { MenuCategory } from "@/components/MenuCategory";
@@ -113,18 +114,25 @@ export default function OrderPage({ params }: PageProps) {
                     <p className="text-xs text-gray-500 font-medium">Table {tableNumber}</p>
                 </div>
             </div>
-            <Button 
-                variant="ghost" 
-                size="icon" 
-                className="text-gray-400 hover:text-red-500"
-                onClick={() => {
-                    if (confirm("Are you sure you want to exit? Your cart will be cleared.")) {
-                        clearCart();
-                    }
-                }}
-            >
-                <LogOut className="h-5 w-5" />
-            </Button>
+            <div className="flex items-center gap-2">
+                <Link href={`/${restaurantSlug}/track`}>
+                    <Button variant="outline" size="sm" className="h-9 px-3 text-orange-600 border-orange-200 hover:bg-orange-50">
+                        My Orders
+                    </Button>
+                </Link>
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="text-gray-400 hover:text-red-500"
+                    onClick={() => {
+                        if (confirm("Are you sure you want to exit? Your cart will be cleared.")) {
+                            clearCart();
+                        }
+                    }}
+                >
+                    <LogOut className="h-5 w-5" />
+                </Button>
+            </div>
         </div>
       </header>
       

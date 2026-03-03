@@ -101,6 +101,11 @@ export const apiService = {
     const response = await api.patch(`/admin/items/${id}`, data);
     return response.data;
   },
+
+  updateOrder: async (id: string, data: { status: string }) => {
+    const response = await api.patch(`/admin/orders/${id}`, data);
+    return response.data;
+  },
   
   // Helper to check if API is reachable (optional)
   healthCheck: async () => {

@@ -52,12 +52,23 @@ export function MenuItemCard({ item }: MenuItemCardProps) {
   return (
     <>
       <Card className="flex flex-col h-full overflow-hidden hover:shadow-lg transition-shadow border-orange-100/50">
-        <div className="relative h-48 w-full bg-gray-100">
-           {/* Placeholder Image */}
-           <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-orange-50">
-             <ShoppingBag className="h-12 w-12 opacity-20" />
-           </div>
-           {/* If real image: <img src={item.imageUrl} alt={item.name} className="object-cover w-full h-full" /> */}
+        <div className="relative aspect-square w-full bg-gray-100 group overflow-hidden">
+            <img 
+                src={item.imageUrl || "/images/food-placeholder.png"} 
+                alt={item.name} 
+                className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
+                onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (target.src !== "/images/food-placeholder.png") {
+                        target.src = "/images/food-placeholder.png";
+                    }
+                }}
+            />
+            {item.available === false && (
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center">
+                    <span className="text-white font-bold text-lg px-4 py-2 border-2 border-white rounded-md tracking-wider">SOLD OUT</span>
+                </div>
+            )}
         </div>
         
         <div className="flex-1 p-4 flex flex-col gap-2">

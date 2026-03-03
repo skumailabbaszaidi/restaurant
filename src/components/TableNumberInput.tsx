@@ -50,13 +50,16 @@ export function TableNumberInput({ restaurantName, logoUrl }: TableNumberInputPr
             <div className="space-y-2">
               <Input
                 type="text"
-                placeholder="e.g. Table 7, Booth 3"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="Enter Table Number (e.g. 7)"
                 value={tableInput}
                 onChange={(e) => {
-                  setTableInput(e.target.value);
+                  const val = e.target.value.replace(/\D/g, "");
+                  setTableInput(val);
                   setError("");
                 }}
-                className="text-lg py-6 text-center border-orange-200 focus-visible:ring-orange-500"
+                className="text-2xl py-8 text-center border-orange-200 focus-visible:ring-orange-500 font-bold"
               />
               {error && <p className="text-sm text-red-500 text-center">{error}</p>}
             </div>
