@@ -25,8 +25,11 @@ export default function MenuPage() {
   const fetchCategories = useAdminStore((state) => state.fetchCategories);
   const addCategory = useAdminStore((state) => state.addCategory);
   const deleteCategory = useAdminStore((state) => state.deleteCategory);
+  const updateMenuItem = useAdminStore((state) => state.updateMenuItem);
+  const deleteMenuItem = useAdminStore((state) => state.deleteMenuItem);
 
-  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<any | null>(null);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   
@@ -83,7 +86,7 @@ export default function MenuPage() {
     }
   };
 
-  const handleAddItem = () => {
+  const handleSaveItem = async () => {
     const newErrors = {
       name: newItem.name ? "" : "Item name is required",
       price: newItem.price ? "" : "Price is required",
@@ -96,19 +99,50 @@ export default function MenuPage() {
       return;
     }
 
-    addMenuItem({
-      name: newItem.name,
-      description: newItem.description,
-      price: Number(newItem.price),
-      categoryId: newItem.categoryId,
-      imageUrl: newItem.imageUrl,
-    });
+    if (editingItem) {
+        await updateMenuItem(editingItem.id, {
+            name: newItem.name,
+            description: newItem.description,
+            price: Number(newItem.price),
+            categoryId: newItem.categoryId,
+            imageUrl: newItem.imageUrl,
+        });
+        toast.success("Item updated successfully");
+    } else {
+        await addMenuItem({
+            name: newItem.name,
+            description: newItem.description,
+            price: Number(newItem.price),
+            categoryId: newItem.categoryId,
+            imageUrl: newItem.imageUrl,
+        });
+        toast.success("Item added successfully");
+    }
 
-    toast.success("Item added successfully");
-    setIsAddOpen(false);
+    setIsItemModalOpen(false);
+    setEditingItem(null);
     setNewItem({ name: "", description: "", price: "", categoryId: "", imageUrl: "/images/food-placeholder.png" });
     setPreviewUrl(null);
     setErrors({ name: "", price: "", categoryId: "" });
+  };
+
+  const handleEditClick = (item: any) => {
+    setEditingItem(item);
+    setNewItem({
+        name: item.name,
+        description: item.description || "",
+        price: item.price.toString(),
+        categoryId: item.categoryId,
+        imageUrl: item.imageUrl || "/images/food-placeholder.png",
+    });
+    setIsItemModalOpen(true);
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    if (confirm("Are you sure you want to delete this item?")) {
+        await deleteMenuItem(id);
+        toast.success("Item deleted successfully");
+    }
   };
 
   return (
@@ -169,17 +203,25 @@ export default function MenuPage() {
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <Dialog open={isItemModalOpen} onOpenChange={(open) => {
+                setIsItemModalOpen(open);
+                if (!open) {
+                    setEditingItem(null);
+                    setNewItem({ name: "", description: "", price: "", categoryId: "", imageUrl: "/images/food-placeholder.png" });
+                    setPreviewUrl(null);
+                    setErrors({ name: "", price: "", categoryId: "" });
+                }
+            }}>
                 <DialogTrigger asChild>
-                    <Button className="bg-orange-600 hover:bg-orange-700">
+                    <Button className="bg-orange-600 hover:bg-orange-700" onClick={() => setIsItemModalOpen(true)}>
                         <Plus className="mr-2 h-4 w-4" /> Add New Item
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle>Add Menu Item</DialogTitle>
+                        <DialogTitle>{editingItem ? "Edit Menu Item" : "Add Menu Item"}</DialogTitle>
                         <DialogDescription>
-                            Create a new delicious item for your menu.
+                            {editingItem ? "Update the details of this item." : "Create a new delicious item for your menu."}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -302,8 +344,10 @@ export default function MenuPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-                        <Button onClick={handleAddItem} className="bg-orange-600 hover:bg-orange-700">Save Item</Button>
+                        <Button variant="outline" onClick={() => setIsItemModalOpen(false)}>Cancel</Button>
+                        <Button onClick={handleSaveItem} className="bg-orange-600 hover:bg-orange-700">
+                            {editingItem ? "Update Item" : "Save Item"}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -364,8 +408,11 @@ export default function MenuPage() {
                                 onCheckedChange={() => toggleMenuItemAvailability(item.id)}
                              />
                         </div>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(item)}>
                             <Edit className="h-4 w-4 text-gray-500" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteItem(item.id)}>
+                            <Trash2 className="h-4 w-4" />
                         </Button>
                     </div>
                 </div>

@@ -29,7 +29,9 @@ interface AdminStore {
   addCategory: (name: string) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   toggleMenuItemAvailability: (id: string) => void;
-  addMenuItem: (item: Omit<MenuItem, 'id' | 'available'>) => void;
+  addMenuItem: (item: Omit<MenuItem, 'id' | 'available'>) => Promise<void>;
+  updateMenuItem: (id: string, data: Partial<MenuItem>) => Promise<void>;
+  deleteMenuItem: (id: string) => Promise<void>;
   updateOrderStatus: (id: string, status: Order['status']) => void;
   fetchOrders: () => Promise<void>;
   fetchMenu: () => Promise<void>;
@@ -257,18 +259,28 @@ export const useAdminStore = create<AdminStore>()(
       addMenuItem: async (item) => {
          try {
              await apiService.addMenuItem(item);
-             // We'd ideally fetch the menu again or add to state
-             // Assuming we have a slug to fetch menu for...
-             const state = get();
-             if (state.currentOrganization?.slug) {
-                // Determine if we need to fetch public or protected menu?
-                // The protected endpoint to GET menu details wasn't explicitly listed 
-                // separately from public GET /restaurants/:slug/menu.
-                // We'll use the public one or just add to local state if backend returns the object.
-             }
+             await get().fetchMenu();
          } catch (e) {
              console.error("Failed to add menu item", e);
          }
+      },
+
+      updateMenuItem: async (id, data) => {
+          try {
+              await apiService.updateMenuItem(id, data);
+              await get().fetchMenu();
+          } catch (e) {
+              console.error("Failed to update menu item", e);
+          }
+      },
+
+      deleteMenuItem: async (id) => {
+          try {
+              await apiService.deleteMenuItem(id);
+              await get().fetchMenu();
+          } catch (e) {
+              console.error("Failed to delete menu item", e);
+          }
       },
 
       updateOrderStatus: async (id, status) => {

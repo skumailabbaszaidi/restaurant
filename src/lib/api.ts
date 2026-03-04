@@ -106,6 +106,11 @@ export const apiService = {
     const response = await api.patch(`/admin/orders/${id}`, data);
     return response.data;
   },
+
+  deleteMenuItem: async (id: string) => {
+    const response = await api.delete(`/admin/items/${id}`);
+    return response.data;
+  },
   
   // Helper to check if API is reachable (optional)
   healthCheck: async () => {
