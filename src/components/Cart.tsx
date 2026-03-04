@@ -87,78 +87,99 @@ export function Cart() {
 
 
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent className="flex flex-col w-full sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Your Order</SheetTitle>
-          </SheetHeader>
-          
-          <ScrollArea className="flex-1 -mx-6 px-6 my-4">
-            {items.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-48 text-gray-500">
-                    <ShoppingCart className="h-12 w-12 mb-2 opacity-20" />
-                    <p>Your cart is empty</p>
-                </div>
-            ) : (
-                <div className="space-y-6">
-                    {items.map((item, index) => (
-                        <div key={`${item.itemId}-${index}`} className="flex flex-col gap-2">
-                            <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                    <h4 className="font-semibold text-base">{item.name}</h4>
-                                    <p className="text-sm text-gray-500">PKR {item.price * item.quantity}</p>
-                                    {item.spiceLevel && <span className="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full mr-2 capitalize">{item.spiceLevel}</span>}
-                                    {item.notes && <p className="text-xs text-gray-500 italic mt-1">"{item.notes}"</p>}
+        <SheetContent className="flex flex-col w-full sm:max-w-md p-0">
+          <div className="flex flex-col h-full">
+            <SheetHeader className="px-6 pt-4 pb-2 border-b">
+              <SheetTitle>Your Order</SheetTitle>
+            </SheetHeader>
+            
+            <ScrollArea className="flex-1 px-6 py-4">
+              {items.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+                      <ShoppingCart className="h-12 w-12 mb-2 opacity-20" />
+                      <p>Your cart is empty</p>
+                  </div>
+              ) : (
+                  <div className="space-y-4">
+                      {items.map((item, index) => (
+                          <div 
+                              key={`${item.itemId}-${index}`} 
+                              className="rounded-xl border border-gray-100 bg-white shadow-sm p-3 flex flex-col gap-3"
+                          >
+                              <div className="flex items-start justify-between gap-3">
+                                  <div className="flex-1">
+                                      <h4 className="font-semibold text-base leading-snug">{item.name}</h4>
+                                      <p className="text-sm text-gray-500 mt-0.5">
+                                        PKR {item.price * item.quantity}
+                                      </p>
+                                      <div className="mt-1 space-x-2">
+                                        {item.spiceLevel && (
+                                          <span className="inline-block text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full capitalize">
+                                            {item.spiceLevel}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {item.notes && (
+                                        <p className="text-xs text-gray-500 italic mt-1 line-clamp-2">
+                                          "{item.notes}"
+                                        </p>
+                                      )}
+                                  </div>
+                                  <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
+                                      onClick={() => removeFromCart(item.itemId, item.spiceLevel, item.modifiers)}
+                                  >
+                                      <Trash2 className="h-4 w-4" />
+                                  </Button>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-600">
+                                  Qty
+                                </span>
+                                <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-900/50 px-2 py-1 rounded-lg">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 rounded-md"
+                                        onClick={() => updateQuantity(item.itemId, item.quantity - 1, item.spiceLevel, item.modifiers)}
+                                    >
+                                        <Minus className="h-3 w-3" />
+                                    </Button>
+                                    <span className="text-sm font-semibold w-5 text-center">{item.quantity}</span>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 rounded-md"
+                                        onClick={() => updateQuantity(item.itemId, item.quantity + 1, item.spiceLevel, item.modifiers)}
+                                    >
+                                        <Plus className="h-3 w-3" />
+                                    </Button>
                                 </div>
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                    onClick={() => removeFromCart(item.itemId, item.spiceLevel, item.modifiers)}
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </div>
-                            <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-900/50 p-1 rounded-lg w-fit">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 rounded-md"
-                                    onClick={() => updateQuantity(item.itemId, item.quantity - 1, item.spiceLevel, item.modifiers)}
-                                >
-                                    <Minus className="h-3 w-3" />
-                                </Button>
-                                <span className="text-sm font-medium w-4 text-center">{item.quantity}</span>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 rounded-md"
-                                    onClick={() => updateQuantity(item.itemId, item.quantity + 1, item.spiceLevel, item.modifiers)}
-                                >
-                                    <Plus className="h-3 w-3" />
-                                </Button>
-                            </div>
-                            <Separator className="mt-2" />
-                        </div>
-                    ))}
-                </div>
-            )}
-          </ScrollArea>
+                              </div>
+                          </div>
+                      ))}
+                  </div>
+              )}
+            </ScrollArea>
 
-          <SheetFooter className="mt-auto border-t pt-4">
-             <div className="w-full space-y-4">
-                <div className="flex items-center justify-between text-lg font-bold">
+            <SheetFooter className="mt-auto border-t px-6 pb-6 pt-4 bg-white">
+              <div className="w-full space-y-3">
+                <div className="flex items-center justify-between text-base md:text-lg font-semibold">
                     <span>Total</span>
                     <span>PKR {totalPrice}</span>
                 </div>
                 <Button 
-                    className="w-full bg-orange-600 hover:bg-orange-700 py-6 text-lg"
+                    className="w-full bg-orange-600 hover:bg-orange-700 py-5 text-base md:text-lg rounded-xl"
                     onClick={handlePlaceOrder}
                     disabled={items.length === 0 || isPlacingOrder}
                 >
                     {isPlacingOrder ? "Placing Order..." : "Place Order"}
                 </Button>
-             </div>
-          </SheetFooter>
+              </div>
+            </SheetFooter>
+          </div>
         </SheetContent>
       </Sheet>
     </>
