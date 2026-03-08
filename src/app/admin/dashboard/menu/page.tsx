@@ -86,6 +86,7 @@ export default function MenuPage() {
     }
   };
 
+  const [isSaving, setIsSaving] = useState(false);
   const handleSaveItem = async () => {
     const newErrors = {
       name: newItem.name ? "" : "Item name is required",
@@ -99,31 +100,38 @@ export default function MenuPage() {
       return;
     }
 
-    if (editingItem) {
-        await updateMenuItem(editingItem.id, {
-            name: newItem.name,
-            description: newItem.description,
-            price: Number(newItem.price),
-            categoryId: newItem.categoryId,
-            imageUrl: newItem.imageUrl,
-        });
-        toast.success("Item updated successfully");
-    } else {
-        await addMenuItem({
-            name: newItem.name,
-            description: newItem.description,
-            price: Number(newItem.price),
-            categoryId: newItem.categoryId,
-            imageUrl: newItem.imageUrl,
-        });
-        toast.success("Item added successfully");
-    }
+    setIsSaving(true);
+    try {
+        if (editingItem) {
+            await updateMenuItem(editingItem.id, {
+                name: newItem.name,
+                description: newItem.description,
+                price: Number(newItem.price),
+                categoryId: newItem.categoryId,
+                imageUrl: newItem.imageUrl,
+            });
+            toast.success("Item updated successfully");
+        } else {
+            await addMenuItem({
+                name: newItem.name,
+                description: newItem.description,
+                price: Number(newItem.price),
+                categoryId: newItem.categoryId,
+                imageUrl: newItem.imageUrl,
+            });
+            toast.success("Item added successfully");
+        }
 
-    setIsItemModalOpen(false);
-    setEditingItem(null);
-    setNewItem({ name: "", description: "", price: "", categoryId: "", imageUrl: "/images/food-placeholder.png" });
-    setPreviewUrl(null);
-    setErrors({ name: "", price: "", categoryId: "" });
+        setIsItemModalOpen(false);
+        setEditingItem(null);
+        setNewItem({ name: "", description: "", price: "", categoryId: "", imageUrl: "/images/food-placeholder.png" });
+        setPreviewUrl(null);
+        setErrors({ name: "", price: "", categoryId: "" });
+    } catch (err) {
+        toast.error("Failed to save item");
+    } finally {
+        setIsSaving(false);
+    }
   };
 
   const handleEditClick = (item: any) => {
@@ -142,6 +150,21 @@ export default function MenuPage() {
     if (confirm("Are you sure you want to delete this item?")) {
         await deleteMenuItem(id);
         toast.success("Item deleted successfully");
+    }
+  };
+
+  const [isAddingCat, setIsAddingCat] = useState(false);
+  const handleAddCategory = async () => {
+    if (!newCatName) return;
+    setIsAddingCat(true);
+    try {
+        await addCategory(newCatName);
+        setNewCatName("");
+        toast.success("Category added");
+    } catch (e) {
+        toast.error("Failed to add category");
+    } finally {
+        setIsAddingCat(false);
     }
   };
 
@@ -171,13 +194,12 @@ export default function MenuPage() {
                                 value={newCatName} 
                                 onChange={(e) => setNewCatName(e.target.value)} 
                             />
-                            <Button onClick={() => {
-                                if (newCatName) {
-                                    addCategory(newCatName);
-                                    setNewCatName("");
-                                    toast.success("Category added");
-                                }
-                            }}>Add</Button>
+                            <Button 
+                                onClick={handleAddCategory}
+                                disabled={isAddingCat || !newCatName}
+                            >
+                                {isAddingCat ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
+                            </Button>
                         </div>
                         <div className="max-h-[300px] overflow-y-auto space-y-2">
                             {categories.map((cat) => (
@@ -345,7 +367,8 @@ export default function MenuPage() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsItemModalOpen(false)}>Cancel</Button>
-                        <Button onClick={handleSaveItem} className="bg-orange-600 hover:bg-orange-700">
+                        <Button onClick={handleSaveItem} className="bg-orange-600 hover:bg-orange-700" disabled={isSaving}>
+                            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {editingItem ? "Update Item" : "Save Item"}
                         </Button>
                     </DialogFooter>

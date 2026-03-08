@@ -51,5 +51,8 @@ export type Order = {
   total: number;
   notes?: string;
   status: "pending" | "confirmed" | "completed";
+  orderNumber?: string;
+  rating?: number;
+  feedback?: string;
   createdAt: Date;
 };

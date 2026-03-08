@@ -111,6 +111,35 @@ export const apiService = {
     const response = await api.delete(`/admin/items/${id}`);
     return response.data;
   },
+
+  getOrderByNumber: async (orderNumber: string, restaurantSlug: string) => {
+    // Robust guard to prevent calls with empty/invalid order numbers
+    if (!orderNumber || typeof orderNumber !== 'string' || !orderNumber.trim()) {
+      console.warn(`[apiService] getOrderByNumber skipped: Invalid orderNumber ("${orderNumber}")`);
+      return null;
+    }
+    
+    console.log(`[apiService] Fetching order: ${orderNumber} for restaurant: ${restaurantSlug}`);
+    try {
+      const response = await api.get(`/orders/track/${orderNumber}`, {
+        params: { restaurantSlug }
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`[apiService] getOrderByNumber failed for ${orderNumber}:`, error);
+      throw error;
+    }
+  },
+
+  submitFeedback: async (orderId: string, data: { rating: number, feedback: string, restaurantSlug: string }) => {
+    const response = await api.post(`/orders/${orderId}/feedback`, data);
+    return response.data;
+  },
+
+  getAllFeedback: async () => {
+    const response = await api.get('/orders/admin/feedback');
+    return response.data;
+  },
   
   // Helper to check if API is reachable (optional)
   healthCheck: async () => {
