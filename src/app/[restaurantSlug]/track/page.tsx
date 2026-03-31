@@ -124,7 +124,10 @@ export default function TrackOrdersPage({ params }: PageProps) {
             feedback: data.text,
             restaurantSlug
         });
-        toast.success("Thank you for your feedback!");
+        toast.success("Feedback received!", {
+            description: "We value your input. Thank you for helping us improve!",
+            duration: 5000,
+        });
         // Local update
         setOrders(prev => ({
             ...prev,

@@ -21,6 +21,8 @@ export function Cart() {
   const removeFromCart = useCartStore((state) => state.removeFromCart);
   const clearCart = useCartStore((state) => state.clearCart);
   const tableNumber = useCartStore((state) => state.tableNumber);
+  const customerName = useCartStore((state) => state.customerName);
+  const customerPhone = useCartStore((state) => state.customerPhone);
   const restaurantSlug = useCartStore((state) => state.restaurantSlug);
 
   const addOrderId = useCartStore((state) => state.addOrderId);
@@ -37,6 +39,8 @@ export function Cart() {
         const orderData = {
           restaurantSlug,
           tableNumber,
+          customerName,
+          customerPhone,
           items,
           total: totalPrice,
           status: 'pending' as const,
@@ -48,6 +52,11 @@ export function Cart() {
         if (result.id) {
             addOrderId(result.id);
         }
+
+        toast.success("Order received!", {
+            description: `We're preparing your food. Order #${result.orderNumber}`,
+            duration: 5000,
+        });
 
         setPlacedOrder(result);
         clearCart();

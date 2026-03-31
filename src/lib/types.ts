@@ -47,6 +47,8 @@ export type Order = {
   id?: string;
   restaurantSlug: string;
   tableNumber: string;
+  customerName?: string;
+  customerPhone?: string;
   items: CartItem[];
   total: number;
   notes?: string;

@@ -39,8 +39,20 @@ export const apiService = {
     return response.data;
   },
 
-  createOrder: async (orderData: { restaurantSlug: string, tableNumber: string, items: any[], total: number }) => {
+  createOrder: async (orderData: { 
+    restaurantSlug: string, 
+    tableNumber: string, 
+    items: any[], 
+    total: number, 
+    customerName?: string, 
+    customerPhone?: string 
+  }) => {
     const response = await api.post('/orders', orderData);
+    return response.data;
+  },
+
+  requestWaiter: async (data: { restaurantSlug: string, tableNumber: string }) => {
+    const response = await api.post('/orders/waiter-request', data);
     return response.data;
   },
 
@@ -138,6 +150,16 @@ export const apiService = {
 
   getAllFeedback: async () => {
     const response = await api.get('/orders/admin/feedback');
+    return response.data;
+  },
+
+  getAdminWaiterRequests: async () => {
+    const response = await api.get('/admin/waiter-requests');
+    return response.data;
+  },
+
+  updateAdminWaiterRequest: async (id: string, status: string) => {
+    const response = await api.patch(`/admin/waiter-requests/${id}`, { status });
     return response.data;
   },
   

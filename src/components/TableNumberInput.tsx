@@ -15,9 +15,12 @@ interface TableNumberInputProps {
 
 export function TableNumberInput({ restaurantName, logoUrl }: TableNumberInputProps) {
   const [tableInput, setTableInput] = useState("");
+  const [nameInput, setNameInput] = useState("");
+  const [phoneInput, setPhoneInput] = useState("");
   const [error, setError] = useState("");
   const setTableNumber = useCartStore((state) => state.setTableNumber);
-  const router = useRouter(); // Although we might just render conditionally in the page
+  const setCustomerInfo = useCartStore((state) => state.setCustomerInfo);
+  const router = useRouter(); 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,9 +28,12 @@ export function TableNumberInput({ restaurantName, logoUrl }: TableNumberInputPr
       setError("Please enter your table number");
       return;
     }
+    if (!nameInput.trim()) {
+      setError("Please enter your name");
+      return;
+    }
     setTableNumber(tableInput);
-    // Logic to proceed. If this component is used on the main order page, 
-    // the parent component might listen to the store or we might not need to route anywhere.
+    setCustomerInfo(nameInput, phoneInput);
   };
 
   return (
@@ -49,21 +55,44 @@ export function TableNumberInput({ restaurantName, logoUrl }: TableNumberInputPr
         </CardHeader>
         <CardContent className="pt-2 sm:pt-4 pb-6 sm:pb-8">
           <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
-            <div className="space-y-2">
-              <Input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                placeholder="Enter Table Number (e.g. 7)"
-                value={tableInput}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, "");
-                  setTableInput(val);
-                  setError("");
-                }}
-                className="text-l sm:text-2xl py-5 sm:py-7 text-center border-orange-200 focus-visible:ring-orange-500 font-bold"
-              />
-              {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Input
+                  type="text"
+                  placeholder="Your Name (required)"
+                  value={nameInput}
+                  onChange={(e) => {
+                    setNameInput(e.target.value);
+                    setError("");
+                  }}
+                  className="h-12 border-orange-100 focus-visible:ring-orange-500 font-medium"
+                />
+              </div>
+              <div className="space-y-2">
+                <Input
+                  type="tel"
+                  placeholder="Phone Number (optional)"
+                  value={phoneInput}
+                  onChange={(e) => setPhoneInput(e.target.value)}
+                  className="h-12 border-orange-100 focus-visible:ring-orange-500 font-medium"
+                />
+              </div>
+              <div className="space-y-2">
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="Table (e.g. 7)"
+                  value={tableInput}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "");
+                    setTableInput(val);
+                    setError("");
+                  }}
+                  className="text-xl h-14 text-center border-orange-200 focus-visible:ring-orange-500 font-bold"
+                />
+              </div>
+              {error && <p className="text-sm text-red-500 text-center font-medium">{error}</p>}
             </div>
             <Button 
                 type="submit" 
