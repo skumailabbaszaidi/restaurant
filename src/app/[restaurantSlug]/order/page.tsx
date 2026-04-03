@@ -8,7 +8,8 @@ import { TableNumberInput } from "@/components/TableNumberInput";
 import { MenuCategory } from "@/components/MenuCategory";
 import { Cart } from "@/components/Cart";
 import { Button } from "@/components/ui/button";
-import { LogOut, Loader2 } from "lucide-react";
+import { LogOut, Loader2, HandPlatter } from "lucide-react";
+import { toast } from "sonner";
 import { apiService } from "@/lib/api";
 import { MenuItem, Category } from "@/lib/types"; // Ensure Category type exists or define it locally if needed
 import { useState } from "react";
@@ -23,6 +24,7 @@ export default function OrderPage({ params }: PageProps) {
   const { restaurantSlug } = use(params);
   
   const tableNumber = useCartStore((state) => state.tableNumber);
+  const setTableNumber = useCartStore((state) => state.setTableNumber);
   const setRestaurantSlug = useCartStore((state) => state.setRestaurantSlug);
   const currentSlug = useCartStore((state) => state.restaurantSlug);
   const clearCart = useCartStore((state) => state.clearCart);
@@ -32,6 +34,26 @@ export default function OrderPage({ params }: PageProps) {
   const [categories, setCategories] = useState<any[]>([]); // Replace 'any' with proper type
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [requestingWaiter, setRequestingWaiter] = useState(false);
+
+  const handleRequestWaiter = async () => {
+    try {
+      if (!tableNumber) return;
+      setRequestingWaiter(true);
+      await apiService.requestWaiter({ restaurantSlug, tableNumber });
+      toast.success("Waiter notified!", {
+        description: "A staff member will be at your table shortly.",
+        duration: 5000,
+      });
+    } catch (err) {
+      console.error("Failed to request waiter", err);
+      toast.error("Request failed", {
+        description: "Please try again or signal a staff member.",
+      });
+    } finally {
+      setRequestingWaiter(false);
+    }
+  };
 
   useEffect(() => {
     async function fetchData() {
@@ -111,7 +133,20 @@ export default function OrderPage({ params }: PageProps) {
                 </div>
                 <div>
                     <h1 className="font-bold text-lg leading-tight">{restaurant.name}</h1>
-                    <p className="text-xs text-gray-500 font-medium">Table {tableNumber}</p>
+                    <div className="flex items-center gap-2">
+                        <p className="text-xs text-gray-500 font-medium">Table {tableNumber}</p>
+                        <button 
+                            onClick={() => {
+                                if (confirm("Change table number? Your cart will be cleared.")) {
+                                    clearCart();
+                                    setTableNumber("");
+                                }
+                            }}
+                            className="text-[10px] text-orange-600 hover:underline font-bold uppercase tracking-tighter"
+                        >
+                            Change
+                        </button>
+                    </div>
                 </div>
             </div>
             <div className="flex items-center gap-2">
@@ -120,6 +155,16 @@ export default function OrderPage({ params }: PageProps) {
                         My Orders
                     </Button>
                 </Link>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 px-3 text-blue-600 border-blue-200 hover:bg-blue-50 flex items-center gap-1"
+                    onClick={handleRequestWaiter}
+                    disabled={requestingWaiter}
+                >
+                    {requestingWaiter ? <Loader2 className="h-4 w-4 animate-spin" /> : <HandPlatter className="h-4 w-4" />}
+                    <span>{requestingWaiter ? "Requesting..." : "Waiter"}</span>
+                </Button>
                 <Button 
                     variant="ghost" 
                     size="icon" 

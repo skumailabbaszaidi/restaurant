@@ -5,9 +5,9 @@ import { formatCurrency, cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Check, Clock, ChefHat, TrendingUp, ShoppingCart, History, LayoutDashboard } from "lucide-react";
+import { Check, Clock, ChefHat, TrendingUp, ShoppingCart, History, LayoutDashboard, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function OrdersPage() {
   const orders = useAdminStore((state) => state.orders);
@@ -107,7 +107,20 @@ export default function OrdersPage() {
     }
   };
 
-  const OrderCard = ({ order }: { order: any }) => (
+  const OrderCard = ({ order }: { order: any }) => {
+    const [isUpdating, setIsUpdating] = useState(false);
+
+    const handleUpdateStatus = async (status: string) => {
+        if (!order.id) return;
+        setIsUpdating(true);
+        try {
+            await updateOrderStatus(order.id, status as any);
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    return (
     <Card key={order.id} className={cn("border-t-4 shadow-sm hover:shadow-md transition-shadow", 
        order.status === 'pending' ? 'border-t-yellow-400' : 
        order.status === 'confirmed' ? 'border-t-blue-400' : 'border-t-green-400'
@@ -115,7 +128,12 @@ export default function OrdersPage() {
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start">
           <div>
-             <CardTitle className="text-xl">Table {order.tableNumber}</CardTitle>
+             <div className="flex items-center gap-2">
+                <CardTitle className="text-xl">Table {order.tableNumber}</CardTitle>
+                <span className="text-xs font-mono bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200">
+                    #{order.orderNumber}
+                </span>
+             </div>
              <CardDescription className="flex items-center gap-1 mt-1">
                 <Clock className="w-3 h-3 text-gray-400" />
                 {new Date(order.createdAt).toLocaleDateString(undefined, { 
@@ -164,24 +182,29 @@ export default function OrdersPage() {
               {order.status === 'pending' && (
                   <Button 
                       className="w-full bg-orange-600 hover:bg-orange-700 text-white" 
-                      onClick={() => order.id && updateOrderStatus(order.id, 'confirmed')}
+                      onClick={() => handleUpdateStatus('confirmed')}
+                      disabled={isUpdating}
                   >
-                      <ChefHat className="mr-2 h-4 w-4" /> Start Preparing
+                      {isUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ChefHat className="mr-2 h-4 w-4" />}
+                      Start Preparing
                   </Button>
               )}
               {order.status === 'confirmed' && (
                   <Button 
                       className="w-full bg-green-600 hover:bg-green-700 text-white" 
-                      onClick={() => order.id && updateOrderStatus(order.id, 'completed')}
+                      onClick={() => handleUpdateStatus('completed')}
+                      disabled={isUpdating}
                   >
-                      <Check className="mr-2 h-4 w-4" /> Mark Completed
+                      {isUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="mr-2 h-4 w-4" />}
+                      Mark Completed
                   </Button>
               )}
           </div>
         </div>
       </CardContent>
     </Card>
-  );
+    );
+  };
 
   return (
     <div className="space-y-8">

@@ -4,9 +4,12 @@ import { CartItem } from '@/lib/types';
 
 interface CartState {
   tableNumber: string;
+  customerName: string;
+  customerPhone: string;
   restaurantSlug: string;
   items: CartItem[];
   setTableNumber: (tableNumber: string) => void;
+  setCustomerInfo: (name: string, phone: string) => void;
   setRestaurantSlug: (slug: string) => void;
   addToCart: (item: CartItem) => void;
   removeFromCart: (itemId: string, spiceLevel?: string, modifiers?: any[]) => void;
@@ -22,9 +25,12 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       tableNumber: '',
+      customerName: '',
+      customerPhone: '',
       restaurantSlug: '',
       items: [],
       setTableNumber: (tableNumber) => set({ tableNumber }),
+      setCustomerInfo: (customerName, customerPhone) => set({ customerName, customerPhone }),
       setRestaurantSlug: (restaurantSlug) => set({ restaurantSlug }),
       addToCart: (newItem) => {
         const items = get().items;

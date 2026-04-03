@@ -11,7 +11,9 @@ import {
   Users, 
   Settings, 
   LogOut, 
-  Menu 
+  Menu,
+  MessageSquare,
+  HandPlatter
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -66,6 +68,8 @@ export default function AdminDashboardLayout({
   const navigation = [
     { name: "Orders", href: "/admin/dashboard/orders", icon: LayoutDashboard },
     { name: "Menu", href: "/admin/dashboard/menu", icon: UtensilsCrossed },
+    { name: "Feedback", href: "/admin/dashboard/feedback", icon: MessageSquare },
+    { name: "Waiter Requests", href: "/admin/dashboard/waiter-requests", icon: HandPlatter },
     // Only show Team and Settings to Admin
     ...(isAdmin ? [
       { name: "Team", href: "/admin/dashboard/team", icon: Users },
