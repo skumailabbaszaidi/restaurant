@@ -5,6 +5,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:5001/
 
 const api = axios.create({
   baseURL: BASE_URL,
+  timeout: 10000, // 10 second timeout to prevent indefinite hangs
   headers: {
     'Content-Type': 'application/json',
   },
@@ -12,10 +13,15 @@ const api = axios.create({
 
 // Interceptor to add Auth token
 api.interceptors.request.use(async (config) => {
-  const user = auth.currentUser;
-  if (user) {
-    const token = await user.getIdToken();
-    config.headers.Authorization = `Bearer ${token}`;
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      console.log(`[api] Fetching token for user: ${user.email}`);
+      const token = await user.getIdToken();
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch (err) {
+    console.error("[api] Failed to get auth token:", err);
   }
   return config;
 }, (error) => {
@@ -25,17 +31,17 @@ api.interceptors.request.use(async (config) => {
 export const apiService = {
   // Public Endpoints
   getRestaurant: async (slug: string) => {
-    const response = await api.get(`/restaurants/${slug}`);
+    const response = await api.get(`restaurants/${slug}`);
     return response.data;
   },
 
   getMenu: async (slug: string) => {
-    const response = await api.get(`/restaurants/${slug}/menu`);
+    const response = await api.get(`restaurants/${slug}/menu`);
     return response.data;
   },
 
   getPublicCategories: async (slug: string) => {
-    const response = await api.get(`/restaurants/${slug}/categories`);
+    const response = await api.get(`restaurants/${slug}/categories`);
     return response.data;
   },
 
@@ -47,80 +53,80 @@ export const apiService = {
     customerName?: string, 
     customerPhone?: string 
   }) => {
-    const response = await api.post('/orders', orderData);
+    const response = await api.post('orders', orderData);
     return response.data;
   },
 
   requestWaiter: async (data: { restaurantSlug: string, tableNumber: string }) => {
-    const response = await api.post('/orders/waiter-request', data);
+    const response = await api.post('orders/waiter-request', data);
     return response.data;
   },
 
   // Protected Endpoints (Admin)
   getOrders: async () => {
-    const response = await api.get('/admin/orders');
+    const response = await api.get('admin/orders');
     return response.data;
   },
 
   getTeam: async () => {
-    const response = await api.get('/admin/team');
+    const response = await api.get('admin/team');
     return response.data;
   },
 
   inviteMember: async (data: { email: string, name: string, role: 'admin' | 'member' }) => {
-    const response = await api.post('/admin/team/invite', data);
+    const response = await api.post('admin/team/invite', data);
     return response.data;
   },
 
   updateOrganization: async (data: any) => {
-    const response = await api.patch('/admin/organization', data);
+    const response = await api.patch('admin/organization', data);
     return response.data;
   },
 
   getOrganization: async () => {
-    const response = await api.get('/admin/organization');
+    const response = await api.get('admin/organization');
     return response.data;
   },
 
   // Category Management
   getCategories: async () => {
-    const response = await api.get('/admin/categories');
+    const response = await api.get('admin/categories');
     return response.data;
   },
 
   addCategory: async (data: { name: string }) => {
-    const response = await api.post('/admin/categories', data);
+    const response = await api.post('admin/categories', data);
     return response.data;
   },
 
   deleteCategory: async (id: string) => {
-    const response = await api.delete(`/admin/categories/${id}`);
+    const response = await api.delete(`admin/categories/${id}`);
     return response.data;
   },
 
   // Menu Item Management (Updated Endpoints)
   getItems: async () => {
-    const response = await api.get('/admin/items');
+    const response = await api.get('admin/items');
     return response.data;
   },
 
   addMenuItem: async (data: any) => {
-    const response = await api.post('/admin/items', data);
+    const response = await api.post('admin/items', data);
     return response.data;
   },
 
   updateMenuItem: async (id: string, data: any) => {
-    const response = await api.patch(`/admin/items/${id}`, data);
+    const response = await api.patch(`admin/items/${id}`, data);
     return response.data;
   },
 
   updateOrder: async (id: string, data: { status: string }) => {
-    const response = await api.patch(`/admin/orders/${id}`, data);
+    const response = await api.patch(`admin/orders/${id}`, data);
     return response.data;
   },
 
   deleteMenuItem: async (id: string) => {
-    const response = await api.delete(`/admin/items/${id}`);
+    const response = await api.delete(`admin/items/${id}`);
     return response.data;
   },
 
@@ -133,7 +139,7 @@ export const apiService = {
     
     console.log(`[apiService] Fetching order: ${orderNumber} for restaurant: ${restaurantSlug}`);
     try {
-      const response = await api.get(`/orders/track/${orderNumber}`, {
+      const response = await api.get(`orders/track/${orderNumber}`, {
         params: { restaurantSlug }
       });
       return response.data;
@@ -144,22 +150,22 @@ export const apiService = {
   },
 
   submitFeedback: async (orderId: string, data: { rating: number, feedback: string, restaurantSlug: string }) => {
-    const response = await api.post(`/orders/${orderId}/feedback`, data);
+    const response = await api.post(`orders/${orderId}/feedback`, data);
     return response.data;
   },
 
   getAllFeedback: async () => {
-    const response = await api.get('/orders/admin/feedback');
+    const response = await api.get('orders/admin/feedback');
     return response.data;
   },
 
   getAdminWaiterRequests: async () => {
-    const response = await api.get('/admin/waiter-requests');
+    const response = await api.get('admin/waiter-requests');
     return response.data;
   },
 
   updateAdminWaiterRequest: async (id: string, status: string) => {
-    const response = await api.patch(`/admin/waiter-requests/${id}`, { status });
+    const response = await api.patch(`admin/waiter-requests/${id}`, { status });
     return response.data;
   },
   

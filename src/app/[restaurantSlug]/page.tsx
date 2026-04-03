@@ -20,19 +20,27 @@ export default function RestaurantLandingPage({ params }: PageProps) {
   const { restaurantSlug } = use(params);
   const [restaurant, setRestaurant] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchRestaurant() {
+      console.log(`[RestaurantPage] Fetching restaurant for slug: ${restaurantSlug}`);
+      setLoading(true);
+      setError(null);
       try {
         const data = await apiService.getRestaurant(restaurantSlug);
+        console.log(`[RestaurantPage] Successfully fetched restaurant:`, data.name);
         setRestaurant(data);
-      } catch (err) {
-        console.error("Failed to fetch restaurant", err);
+      } catch (err: any) {
+        console.error("[RestaurantPage] Failed to fetch restaurant:", err);
+        setError(err.message || "Failed to load restaurant details. Please check your connection.");
       } finally {
         setLoading(false);
       }
     }
-    fetchRestaurant();
+    if (restaurantSlug) {
+      fetchRestaurant();
+    }
   }, [restaurantSlug]);
 
   const tableNumber = useCartStore((state) => state.tableNumber);
@@ -46,13 +54,33 @@ export default function RestaurantLandingPage({ params }: PageProps) {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
+        <div className="bg-white p-8 rounded-2xl shadow-sm border max-w-md w-full">
+           <div className="bg-red-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Utensils className="h-8 w-8 text-red-500" />
+           </div>
+           <h1 className="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h1>
+           <p className="text-gray-500 mb-6">{error}</p>
+           <Button 
+            className="w-full bg-orange-600 hover:bg-orange-700"
+            onClick={() => window.location.reload()}
+           >
+              Retry Connection
+           </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (!restaurant) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
         <div className="bg-white p-8 rounded-2xl shadow-sm border max-w-md w-full">
            <Utensils className="h-12 w-12 text-gray-300 mx-auto mb-4" />
            <h1 className="text-2xl font-bold text-gray-900 mb-2">Restaurant Not Found</h1>
-           <p className="text-gray-500 mb-6">The restaurant slug you're looking for doesn't exist.</p>
+           <p className="text-gray-500 mb-6">The restaurant slug "{restaurantSlug}" you&apos;re looking for doesn&apos;t exist.</p>
            <Link href="/">
               <Button className="w-full bg-orange-600 hover:bg-orange-700">Go to Homepage</Button>
            </Link>
