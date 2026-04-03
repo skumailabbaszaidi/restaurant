@@ -15,9 +15,12 @@ interface TableNumberInputProps {
 
 export function TableNumberInput({ restaurantName, logoUrl }: TableNumberInputProps) {
   const [tableInput, setTableInput] = useState("");
+  const [nameInput, setNameInput] = useState("");
+  const [phoneInput, setPhoneInput] = useState("");
   const [error, setError] = useState("");
   const setTableNumber = useCartStore((state) => state.setTableNumber);
-  const router = useRouter(); // Although we might just render conditionally in the page
+  const setCustomerInfo = useCartStore((state) => state.setCustomerInfo);
+  const router = useRouter(); 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,44 +28,75 @@ export function TableNumberInput({ restaurantName, logoUrl }: TableNumberInputPr
       setError("Please enter your table number");
       return;
     }
+    if (!nameInput.trim()) {
+      setError("Please enter your name");
+      return;
+    }
     setTableNumber(tableInput);
-    // Logic to proceed. If this component is used on the main order page, 
-    // the parent component might listen to the store or we might not need to route anywhere.
+    setCustomerInfo(nameInput, phoneInput);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-orange-50/50 p-4">
-      <Card className="w-full max-w-md border-orange-100 shadow-xl">
-        <CardHeader className="text-center space-y-4">
+    <div className="min-h-screen flex items-center justify-center bg-orange-50/50 px-4 py-8 sm:py-10">
+      <Card className="w-full max-w-md border-orange-100 shadow-xl rounded-2xl sm:rounded-3xl">
+        <CardHeader className="text-center space-y-3 sm:space-y-4">
           {logoUrl && (
             <div className="mx-auto w-24 h-24 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden mb-2">
                {/* Replace with actual Image component if we have real images */}
                <img src={logoUrl} alt={restaurantName} className="object-cover w-full h-full" />
             </div>
           )}
-          <CardTitle className="text-3xl font-bold text-orange-950">{restaurantName}</CardTitle>
-          <CardDescription className="text-lg text-orange-800/80">
+          <CardTitle className="text-2xl sm:text-3xl font-bold text-orange-950 break-words px-2">
+            {restaurantName}
+          </CardTitle>
+          <CardDescription className="text-sm sm:text-base md:text-lg text-orange-800/80 px-4">
             Welcome! Please enter your table number to start ordering.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Input
-                type="text"
-                placeholder="e.g. Table 7, Booth 3"
-                value={tableInput}
-                onChange={(e) => {
-                  setTableInput(e.target.value);
-                  setError("");
-                }}
-                className="text-lg py-6 text-center border-orange-200 focus-visible:ring-orange-500"
-              />
-              {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+        <CardContent className="pt-2 sm:pt-4 pb-6 sm:pb-8">
+          <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Input
+                  type="text"
+                  placeholder="Your Name (required)"
+                  value={nameInput}
+                  onChange={(e) => {
+                    setNameInput(e.target.value);
+                    setError("");
+                  }}
+                  className="h-12 border-orange-100 focus-visible:ring-orange-500 font-medium"
+                />
+              </div>
+              <div className="space-y-2">
+                <Input
+                  type="tel"
+                  placeholder="Phone Number (optional)"
+                  value={phoneInput}
+                  onChange={(e) => setPhoneInput(e.target.value)}
+                  className="h-12 border-orange-100 focus-visible:ring-orange-500 font-medium"
+                />
+              </div>
+              <div className="space-y-2">
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="Table (e.g. 7)"
+                  value={tableInput}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "");
+                    setTableInput(val);
+                    setError("");
+                  }}
+                  className="text-xl h-14 text-center border-orange-200 focus-visible:ring-orange-500 font-bold"
+                />
+              </div>
+              {error && <p className="text-sm text-red-500 text-center font-medium">{error}</p>}
             </div>
             <Button 
                 type="submit" 
-                className="w-full py-6 text-lg bg-orange-600 hover:bg-orange-700 text-white font-semibold shadow-md transition-all active:scale-[0.98]"
+                className="w-full py-4 sm:py-5 text-base sm:text-lg bg-orange-600 hover:bg-orange-700 text-white font-semibold shadow-md transition-all active:scale-[0.98] rounded-xl"
             >
               Start Ordering <ArrowRight className="ml-2 h-5 w-5" />
             </Button>

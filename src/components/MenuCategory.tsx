@@ -39,7 +39,7 @@ export function MenuCategory({ categories, items }: MenuCategoryProps) {
       <div className="p-4 pb-24 max-w-7xl mx-auto">
         {categories.map((category) => (
             <TabsContent key={category.id} value={category.id} className="mt-4 space-y-6 animate-in fade-in-50 slide-in-from-bottom-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
                     {itemsByCategory[category.id]?.map((item) => (
                         <MenuItemCard key={item.id} item={item} />
                     ))}

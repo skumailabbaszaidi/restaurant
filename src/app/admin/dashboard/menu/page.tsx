@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Trash2, Plus, Edit, Image as ImageIcon } from "lucide-react";
+import { Trash2, Plus, Edit, Image as ImageIcon, Loader2 } from "lucide-react";
+import { uploadToCloudinary } from "@/lib/cloudinary";
 
 export default function MenuPage() {
   const menuItems = useAdminStore((state) => state.menuItems);
@@ -24,8 +25,11 @@ export default function MenuPage() {
   const fetchCategories = useAdminStore((state) => state.fetchCategories);
   const addCategory = useAdminStore((state) => state.addCategory);
   const deleteCategory = useAdminStore((state) => state.deleteCategory);
+  const updateMenuItem = useAdminStore((state) => state.updateMenuItem);
+  const deleteMenuItem = useAdminStore((state) => state.deleteMenuItem);
 
-  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<any | null>(null);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   
@@ -33,6 +37,9 @@ export default function MenuPage() {
     fetchMenu();
     fetchCategories();
   }, [fetchMenu, fetchCategories]);
+
+  const [isUploading, setIsUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [newItem, setNewItem] = useState({
     name: "",
     description: "",
@@ -46,7 +53,41 @@ export default function MenuPage() {
     categoryId: "",
   });
 
-  const handleAddItem = () => {
+  // Cleanup object URL to prevent memory leaks
+  useEffect(() => {
+    return () => {
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image too large", { description: "Maximum size is 5MB" });
+        return;
+    }
+
+    // Set local preview immediately
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+
+    setIsUploading(true);
+    try {
+        const url = await uploadToCloudinary(file);
+        setNewItem(prev => ({ ...prev, imageUrl: url }));
+        toast.success("Image uploaded successfully");
+    } catch (error: any) {
+        toast.error("Upload failed", { description: error.message });
+        setPreviewUrl(null); // Reset on failure
+    } finally {
+        setIsUploading(false);
+    }
+  };
+
+  const [isSaving, setIsSaving] = useState(false);
+  const handleSaveItem = async () => {
     const newErrors = {
       name: newItem.name ? "" : "Item name is required",
       price: newItem.price ? "" : "Price is required",
@@ -59,18 +100,72 @@ export default function MenuPage() {
       return;
     }
 
-    addMenuItem({
-      name: newItem.name,
-      description: newItem.description,
-      price: Number(newItem.price),
-      categoryId: newItem.categoryId,
-      imageUrl: newItem.imageUrl,
-    });
+    setIsSaving(true);
+    try {
+        if (editingItem) {
+            await updateMenuItem(editingItem.id, {
+                name: newItem.name,
+                description: newItem.description,
+                price: Number(newItem.price),
+                categoryId: newItem.categoryId,
+                imageUrl: newItem.imageUrl,
+            });
+            toast.success("Item updated successfully");
+        } else {
+            await addMenuItem({
+                name: newItem.name,
+                description: newItem.description,
+                price: Number(newItem.price),
+                categoryId: newItem.categoryId,
+                imageUrl: newItem.imageUrl,
+            });
+            toast.success("Item added successfully");
+        }
 
-    toast.success("Item added successfully");
-    setIsAddOpen(false);
-    setNewItem({ name: "", description: "", price: "", categoryId: "", imageUrl: "/images/food-placeholder.png" });
-    setErrors({ name: "", price: "", categoryId: "" });
+        setIsItemModalOpen(false);
+        setEditingItem(null);
+        setNewItem({ name: "", description: "", price: "", categoryId: "", imageUrl: "/images/food-placeholder.png" });
+        setPreviewUrl(null);
+        setErrors({ name: "", price: "", categoryId: "" });
+    } catch (err) {
+        toast.error("Failed to save item");
+    } finally {
+        setIsSaving(false);
+    }
+  };
+
+  const handleEditClick = (item: any) => {
+    setEditingItem(item);
+    setNewItem({
+        name: item.name,
+        description: item.description || "",
+        price: item.price.toString(),
+        categoryId: item.categoryId,
+        imageUrl: item.imageUrl || "/images/food-placeholder.png",
+    });
+    setIsItemModalOpen(true);
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    if (confirm("Are you sure you want to delete this item?")) {
+        await deleteMenuItem(id);
+        toast.success("Item deleted successfully");
+    }
+  };
+
+  const [isAddingCat, setIsAddingCat] = useState(false);
+  const handleAddCategory = async () => {
+    if (!newCatName) return;
+    setIsAddingCat(true);
+    try {
+        await addCategory(newCatName);
+        setNewCatName("");
+        toast.success("Category added");
+    } catch (e) {
+        toast.error("Failed to add category");
+    } finally {
+        setIsAddingCat(false);
+    }
   };
 
   return (
@@ -99,13 +194,12 @@ export default function MenuPage() {
                                 value={newCatName} 
                                 onChange={(e) => setNewCatName(e.target.value)} 
                             />
-                            <Button onClick={() => {
-                                if (newCatName) {
-                                    addCategory(newCatName);
-                                    setNewCatName("");
-                                    toast.success("Category added");
-                                }
-                            }}>Add</Button>
+                            <Button 
+                                onClick={handleAddCategory}
+                                disabled={isAddingCat || !newCatName}
+                            >
+                                {isAddingCat ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
+                            </Button>
                         </div>
                         <div className="max-h-[300px] overflow-y-auto space-y-2">
                             {categories.map((cat) => (
@@ -131,17 +225,25 @@ export default function MenuPage() {
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <Dialog open={isItemModalOpen} onOpenChange={(open) => {
+                setIsItemModalOpen(open);
+                if (!open) {
+                    setEditingItem(null);
+                    setNewItem({ name: "", description: "", price: "", categoryId: "", imageUrl: "/images/food-placeholder.png" });
+                    setPreviewUrl(null);
+                    setErrors({ name: "", price: "", categoryId: "" });
+                }
+            }}>
                 <DialogTrigger asChild>
-                    <Button className="bg-orange-600 hover:bg-orange-700">
+                    <Button className="bg-orange-600 hover:bg-orange-700" onClick={() => setIsItemModalOpen(true)}>
                         <Plus className="mr-2 h-4 w-4" /> Add New Item
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle>Add Menu Item</DialogTitle>
+                        <DialogTitle>{editingItem ? "Edit Menu Item" : "Add Menu Item"}</DialogTitle>
                         <DialogDescription>
-                            Create a new delicious item for your menu.
+                            {editingItem ? "Update the details of this item." : "Create a new delicious item for your menu."}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -223,10 +325,52 @@ export default function MenuPage() {
                                 placeholder="Describe the ingredients and taste..."
                             />
                         </div>
+                        <div className="grid gap-2">
+                            <Label>Item Image</Label>
+                            <div className="flex items-center gap-4">
+                                <div className="h-24 w-24 rounded-lg border-2 border-dashed border-orange-200 flex items-center justify-center overflow-hidden bg-gray-50 relative group transition-all hover:bg-orange-50/50">
+                                    {isUploading ? (
+                                        <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+                                    ) : (
+                                        <>
+                                            <img 
+                                                src={previewUrl || newItem.imageUrl} 
+                                                alt="Preview" 
+                                                className="h-full w-full object-cover"
+                                                onError={(e) => {
+                                                    const target = e.target as HTMLImageElement;
+                                                    target.src = "/images/food-placeholder.png";
+                                                }}
+                                            />
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                <ImageIcon className="h-6 w-6 text-white" />
+                                            </div>
+                                        </>
+                                    )}
+                                    <input 
+                                        type="file" 
+                                        accept="image/*" 
+                                        className="absolute inset-0 opacity-0 cursor-pointer" 
+                                        onChange={handleImageUpload}
+                                        disabled={isUploading}
+                                    />
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                    <p className="text-sm font-semibold text-gray-700">Upload Item Image</p>
+                                    <p className="text-xs text-gray-500 leading-relaxed">
+                                        Best size: 800x800px. <br/>
+                                        Max size 5MB. format: JPG, PNG.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-                        <Button onClick={handleAddItem} className="bg-orange-600 hover:bg-orange-700">Save Item</Button>
+                        <Button variant="outline" onClick={() => setIsItemModalOpen(false)}>Cancel</Button>
+                        <Button onClick={handleSaveItem} className="bg-orange-600 hover:bg-orange-700" disabled={isSaving}>
+                            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {editingItem ? "Update Item" : "Save Item"}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -245,9 +389,16 @@ export default function MenuPage() {
             {menuItems.map((item) => (
                 <div key={item.id} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50/50 transition-colors">
                     <div className="col-span-6 md:col-span-5 flex gap-3 items-center">
-                        <div className="h-10 w-10 rounded bg-gray-100 flex items-center justify-center flex-shrink-0">
-                             {/* Placeholder */}
-                             <ImageIcon className="h-5 w-5 text-gray-400" />
+                        <div className="h-12 w-12 rounded-lg border border-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden bg-gray-50">
+                             <img 
+                                 src={item.imageUrl || "/images/food-placeholder.png"} 
+                                 alt={item.name} 
+                                 className="h-full w-full object-cover"
+                                 onError={(e) => {
+                                     const target = e.target as HTMLImageElement;
+                                     target.src = "/images/food-placeholder.png";
+                                 }}
+                             />
                         </div>
                         <div>
                             <p className="font-medium text-gray-900">{item.name}</p>
@@ -280,8 +431,11 @@ export default function MenuPage() {
                                 onCheckedChange={() => toggleMenuItemAvailability(item.id)}
                              />
                         </div>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(item)}>
                             <Edit className="h-4 w-4 text-gray-500" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteItem(item.id)}>
+                            <Trash2 className="h-4 w-4" />
                         </Button>
                     </div>
                 </div>

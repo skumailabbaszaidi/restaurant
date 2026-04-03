@@ -47,9 +47,14 @@ export type Order = {
   id?: string;
   restaurantSlug: string;
   tableNumber: string;
+  customerName?: string;
+  customerPhone?: string;
   items: CartItem[];
   total: number;
   notes?: string;
   status: "pending" | "confirmed" | "completed";
+  orderNumber?: string;
+  rating?: number;
+  feedback?: string;
   createdAt: Date;
 };

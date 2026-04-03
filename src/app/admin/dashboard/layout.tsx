@@ -11,7 +11,9 @@ import {
   Users, 
   Settings, 
   LogOut, 
-  Menu 
+  Menu,
+  MessageSquare,
+  HandPlatter
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -27,19 +29,47 @@ export default function AdminDashboardLayout({
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
+  const checkAuth = useAdminStore((state) => state.checkAuth);
+  const [isInitializing, setIsInitializing] = useState(true);
+
   useEffect(() => {
-    if (!currentUser) {
+    const unsubscribe = checkAuth();
+    
+    // We wait a bit for Firebase to tell us if we are logged in or not
+    const timeout = setTimeout(() => {
+      setIsInitializing(false);
+    }, 1500); // 1.5s grace period for Firebase auth to stabilize
+
+    return () => {
+      unsubscribe();
+      clearTimeout(timeout);
+    };
+  }, [checkAuth]);
+
+  useEffect(() => {
+    if (!isInitializing && !currentUser) {
       router.push("/admin/login");
     }
-  }, [currentUser, router]);
+  }, [currentUser, router, isInitializing]);
 
-  if (!currentUser) return null;
+  if (isInitializing || !currentUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">
+        <div className="text-center">
+            <div className="h-8 w-8 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p>Verifying session...</p>
+        </div>
+      </div>
+    );
+  }
 
   const isAdmin = currentUser.role === "admin";
 
   const navigation = [
     { name: "Orders", href: "/admin/dashboard/orders", icon: LayoutDashboard },
     { name: "Menu", href: "/admin/dashboard/menu", icon: UtensilsCrossed },
+    { name: "Feedback", href: "/admin/dashboard/feedback", icon: MessageSquare },
+    { name: "Waiter Requests", href: "/admin/dashboard/waiter-requests", icon: HandPlatter },
     // Only show Team and Settings to Admin
     ...(isAdmin ? [
       { name: "Team", href: "/admin/dashboard/team", icon: Users },
